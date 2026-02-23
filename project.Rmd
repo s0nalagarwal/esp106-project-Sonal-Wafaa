@@ -1,0 +1,45 @@
+---
+title: "Working_Project"
+author: "Wafaa Lawai"
+date: "2026-02-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(terra)
+
+# read in faults shapefile
+faults <- vect("faults/shapefiles/FAM_Qt_Faults.shp")
+
+# read in Alameda county shapefile
+alameda <- vect("County_Boundary_-2312687860649160244/County_Boundary.shp")
+```
+
+Harmonize CRS & crop to county of interest
+```{r}
+faults <- project(faults, 'epsg:6417')
+alameda <- project(alameda, 'epsg:6417')
+
+alameda_faults <- crop(faults, alameda)
+alameda_faults <- mask(faults, alameda)
+```
+
+Convert faults vector into a distance raster
+```{r}
+# createa  new raster to serve as distance raster
+r <- rast(alameda, nrow = 180, ncol = 360)
+
+dists <- distance(r, alameda_faults)
+
+plot(dists)
+plot(alameda_faults, add = TRUE, col = 'white')
+```
+
+
+
+
