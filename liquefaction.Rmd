@@ -9,6 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(terra)
+```
+
 
 load in liquefaction zones 
 
@@ -33,8 +37,18 @@ alameda <- project(alameda, liquefaction)
 ```{r}
 liquefaction <- crop(liquefaction, alameda)
 liquefaction <- mask(liquefaction, alameda)
+#plot(liquefaction, "liq")
+#plot(alameda, add = TRUE)
+
 ```
 
+
+```{r}
+r <- rast(alameda, nrow = 180, ncol = 360)
+liquefaction <- rasterize(liquefaction, r, "liq", background = 3)
+liquefaction <- addCats(liquefaction, layer = "Safe", value = 3)
+
+```
 
 
 
