@@ -39,7 +39,38 @@ dists <- distance(r, alameda_faults)
 plot(dists)
 plot(alameda_faults, add = TRUE, col = 'white')
 ```
+Crop distance raster to county boundaries
+```{r}
+dists <- crop(dists, alameda)
+dists <- mask(dists, alameda)
 
+plot(dists)
+plot(alameda_faults, add = TRUE, col = 'white')
+```
+Read in & tidy population data
+```{r}
+pop <- read.csv("alameda_pop.csv", header = FALSE)
+head(pop)
 
+pop <- t(pop)
+pop <- as.data.frame(pop)
 
+colnames(pop) <- c("Tract", "Population")
+pop <- pop[-1,]
+
+```
+
+```{r}
+tracts <- vect("Census_Tract_Boundaries/Census_Tract_Boundaries.shp")
+tracts
+```
+Create a separate ID column for population data
+```{r}
+pop$ID <- pop$Tract
+
+for (i in 1:379) {
+  pop$ID[i] <- parse_number(pop$ID[i])
+}
+
+```
 
