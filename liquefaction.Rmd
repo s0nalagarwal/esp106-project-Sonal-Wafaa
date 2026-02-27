@@ -45,10 +45,20 @@ liquefaction <- mask(liquefaction, alameda)
 
 ```{r}
 r <- rast(alameda, nrow = 180, ncol = 360)
-liquefaction <- rasterize(liquefaction, r, "liq", background = 3)
-liquefaction <- addCats(liquefaction, layer = "Safe", value = 3)
-
+liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
 ```
 
 
+```{r}
+
+cls <- data.frame(id=0:2, zone=c("H", "VH", "S"))
+
+levels(liquefaction) <- cls
+
+liquefaction <- crop(liquefaction, alameda)
+liquefaction <- mask(liquefaction, alameda)
+
+plot(liquefaction)
+plot(alameda, add = TRUE)
+```
 
