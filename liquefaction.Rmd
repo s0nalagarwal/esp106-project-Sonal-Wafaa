@@ -1,0 +1,82 @@
+---
+title: "Project_Brainstorming"
+author: "Sonal Agarwal"
+date: "2026-02-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(terra)
+```
+
+
+load in liquefaction zones 
+
+```{r}
+liquefaction <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Soil Liquefaction Hazard Zone_20260223/geo_export_dfa19071-7e4a-4377-a4e6-7b26faeb6a64.shp")
+
+```
+
+load in county boundary 
+
+```{r}
+alameda <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/County_Boundary_-2312687860649160244/County_Boundary.shp")
+```
+
+change crs of data
+```{r}
+liquefaction <- project(liquefaction, "EPSG:6417")
+alameda <- project(alameda, liquefaction)
+```
+
+#Crop and mask to Alameda County
+```{r}
+liquefaction <- crop(liquefaction, alameda)
+liquefaction <- mask(liquefaction, alameda)
+#plot(liquefaction, "liq")
+#plot(alameda, add = TRUE)
+
+```
+
+
+```{r}
+r <- rast(alameda, nrow = 180, ncol = 360)
+liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
+```
+
+
+```{r}
+
+cls <- data.frame(id=0:2, zone=c("H", "VH", "S"))
+
+levels(liquefaction) <- cls
+
+liquefaction <- crop(liquefaction, alameda)
+liquefaction <- mask(liquefaction, alameda)
+
+plot(liquefaction)
+plot(alameda, add = TRUE)
+```
+
+
+#Census tracts 
+
+```{r}
+
+tracts <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Census_Tract_Boundaries_-812809170864177660.geojson")
+plot(tracts)
+
+
+tracts <- project(tracts, liquefaction)
+
+tract_area <- expanse(tracts, unit = "m")
+#tract_area <- sel(tract_area)
+
+tracts$area <- tract_area
+
+```
+
