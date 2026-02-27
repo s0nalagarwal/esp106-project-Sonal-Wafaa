@@ -62,3 +62,21 @@ plot(liquefaction)
 plot(alameda, add = TRUE)
 ```
 
+
+#Census tracts 
+
+```{r}
+
+tracts <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Census_Tract_Boundaries_-812809170864177660.geojson")
+plot(tracts)
+
+
+tracts <- project(tracts, liquefaction)
+
+tract_area <- expanse(tracts, unit = "m")
+#tract_area <- sel(tract_area)
+
+tracts$area <- tract_area
+
+```
+
