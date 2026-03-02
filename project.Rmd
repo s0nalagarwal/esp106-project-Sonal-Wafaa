@@ -10,8 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-
 library(terra)
+library(readr)
+library(tidyterra)
+library(classInt)
+```
+
+```{r}
 
 # read in faults shapefile
 faults <- vect("faults/shapefiles/FAM_Qt_Faults.shp")
@@ -60,17 +65,62 @@ pop <- pop[-1,]
 
 ```
 
-```{r}
-tracts <- vect("Census_Tract_Boundaries/Census_Tract_Boundaries.shp")
-tracts
-```
 Create a separate ID column for population data
 ```{r}
 pop$ID <- pop$Tract
 
 for (i in 1:379) {
   pop$ID[i] <- parse_number(pop$ID[i])
+  pop$Population[i] <- parse_number(pop$Population[i])
 }
+
+pop$Population <- as.numeric(pop$Population)
+
+```
+
+Area data
+
+```{r}
+area <- vect("AlamedaTracts.geojson")
+
+area$DIST_NAME
+
+for (i in 1:378) {
+  area$DIST_NAME[i] <- parse_number(area$DIST_NAME[i])
+}
+
+```
+
+Merge population data into spatvector with land area
+
+```{r}
+colnames(pop) <- c("Tract", "Population", "DIST_NAME")
+
+tracts <- merge(area, pop, by = "DIST_NAME")
+```
+
+Calculate density
+
+```{r}
+
+tracts$density <- tracts$Population / tracts$area
+
+# density <- density %>% 
+#   mutate(density = Population / area)
+```
+
+boop
+```{r}
+h <- classIntervals(tracts$density, n = 5, style = 'quantile')
+
+plot(tracts, "density", breakby = 'cases')
+```
+
+Turn this into a raster
+
+```{r}
+
+tracter <- rasterize(tracts, r, "density")
 
 ```
 
