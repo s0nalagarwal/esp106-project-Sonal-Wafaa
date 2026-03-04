@@ -44,6 +44,10 @@ liquefaction <- mask(liquefaction, alameda)
 
 
 ```{r}
+```
+
+
+```{r}
 r <- rast(alameda, nrow = 180, ncol = 360)
 liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
 ```
@@ -60,10 +64,12 @@ liquefaction <- mask(liquefaction, alameda)
 
 plot(liquefaction)
 plot(alameda, add = TRUE)
+
+writeRaster(liquefaction, "liquefactionzones.tif")
 ```
 
 
-#Census tracts 
+Census tracts 
 
 ```{r}
 
@@ -77,6 +83,12 @@ tract_area <- expanse(tracts, unit = "m")
 #tract_area <- sel(tract_area)
 
 tracts$area <- tract_area
+
+#writeVector(tracts, filename = "AlamedaTracts.geojson")
+
+```
+```{r}
+
 
 ```
 
