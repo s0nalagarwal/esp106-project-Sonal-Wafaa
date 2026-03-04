@@ -1,0 +1,211 @@
+---
+title: "Working_Project"
+author: "Wafaa Lawai"
+date: "2026-02-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(terra)
+library(readr)
+library(classInt)
+```
+
+```{r}
+
+# read in faults shapefile
+faults <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/faults/shapefiles/FAM_Qt_Faults.shp")
+
+# read in Alameda county shapefile
+alameda <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/County_Boundary_-2312687860649160244/County_Boundary.shp")
+```
+
+Harmonize CRS & crop to county of interest
+```{r}
+faults <- project(faults, 'epsg:6417')
+alameda <- project(alameda, 'epsg:6417')
+
+alameda_faults <- crop(faults, alameda)
+alameda_faults <- mask(faults, alameda)
+```
+
+Convert faults vector into a distance raster
+```{r}
+# createa  new raster to serve as distance raster
+r <- rast(alameda, nrow = 180, ncol = 360)
+
+dists <- distance(r, alameda_faults)
+
+plot(dists)
+plot(alameda_faults, add = TRUE, col = 'white')
+```
+Crop distance raster to county boundaries
+```{r}
+dists <- crop(dists, alameda)
+dists <- mask(dists, alameda)
+
+plot(dists)
+plot(alameda_faults, add = TRUE, col = 'white')
+```
+Read in & tidy population data
+```{r}
+pop <- read.csv("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/alameda_pop.csv", header = FALSE)
+head(pop)
+
+pop <- t(pop)
+pop <- as.data.frame(pop)
+
+colnames(pop) <- c("Tract", "Population")
+pop <- pop[-1,]
+
+```
+
+Create a separate ID column for population data
+```{r}
+pop$ID <- pop$Tract
+
+for (i in 1:379) {
+  pop$ID[i] <- parse_number(pop$ID[i])
+  pop$Population[i] <- parse_number(pop$Population[i])
+}
+
+pop$Population <- as.numeric(pop$Population)
+
+```
+
+Area data
+
+```{r}
+area <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/AlamedaTracts.geojson")
+
+for (i in 1:378) {
+  area$DIST_NAME[i] <- parse_number(area$DIST_NAME[i])
+}
+
+```
+
+Merge population data into spatvector with land area
+
+```{r}
+colnames(pop) <- c("Tract", "Population", "DIST_NAME")
+
+tracts <- merge(area, pop, by = "DIST_NAME")
+```
+
+Calculate density
+
+```{r}
+
+tracts$density <- tracts$Population / tracts$area
+
+# density <- density %>% 
+#   mutate(density = Population / area)
+```
+
+boop
+```{r}
+h <- classIntervals(tracts$density, n = 5, style = 'quantile')
+
+plot(tracts, "density", breakby = 'cases')
+```
+
+Turn this into a raster
+
+```{r}
+
+tracter <- rasterize(tracts, r, "density")
+
+```
+
+
+```{r}
+liquefaction <- rast("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/liquefactionzones.tif")
+plot(liquefaction)
+
+reclass_liquefaction <- matrix(c(
+  2, 0,
+  1, 0.5,
+  0, 1
+), ncol = 2, byrow = TRUE)
+
+liquefaction_binned <- classify(liquefaction, reclass_liquefaction)
+plot(liquefaction_binned)
+
+
+```
+```{r}
+
+reclass_density <- matrix(c(
+  0, 0.001789466, 0,
+  0.001789466, 0.003259117, 0.25,
+  0.003259117, 0.004418675, 0.5,
+  0.004418675, 0.00615361, 0.75,
+  0.00615361, Inf, 1
+), ncol = 3, byrow = TRUE)
+
+xjmax= 2.759048e-02 
+xjmin  = 8.820881e-07 
+
+dens_range <- (tracter - xjmin) / (xjmax - xjmin)
+plot(dens_range)
+
+
+#density_binned <- classify(tracter, reclass_density)
+#plot(density_binned)
+
+
+#summed <- liquefaction_binned + density_binned  
+#summed
+#plot(summed)
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(density_binned)
+plot(liquefaction_binned)
+plot(density_binned)
+plot(summed)
+```
+
+
+Distance raster binning/ reclass
+```{r}
+distmax= 14002.541
+distmin  = 0.0047
+
+dists_range <- (distmax - dists) / (distmax - distmin)
+plot(dists_range)
+```
+
+
+```{r}
+summed <- (liquefaction_binned * 0.4) + (dens_range * 0.2) + (dists_range * 0.4)
+summed
+plot(summed)
+#plet(summed)
+
+
+
+```
+
+```{r}
+roads <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Street_Centerlines_-6175090382167386015/Street_Centerlines.shp")
+
+roads <- project(roads, crs(summed))
+```
+
+```{r}
+
+plot(summed)
+plot(roads[roads$CLASS == 'Interstate'], add = TRUE)
+plot(roads[roads$CLASS == 'Freeway or Expressway'], add = TRUE)
+#plot(roads[roads$CLASS == 'Minor Arterial'], add = TRUE)
+plot(roads[roads$CLASS == 'Principal Arterial'], add = TRUE)
+
+
+```
+
