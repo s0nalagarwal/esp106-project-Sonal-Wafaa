@@ -200,12 +200,47 @@ roads <- project(roads, crs(summed))
 
 ```{r}
 
-plot(summed)
-plot(roads[roads$CLASS == 'Interstate'], add = TRUE)
-plot(roads[roads$CLASS == 'Freeway or Expressway'], add = TRUE)
+#plot(roads[roads$CLASS == 'Interstate'], add = TRUE)
+#plot(roads[roads$CLASS == 'Freeway or Expressway'], add = TRUE)
 #plot(roads[roads$CLASS == 'Minor Arterial'], add = TRUE)
-plot(roads[roads$CLASS == 'Principal Arterial'], add = TRUE)
+#plot(roads[roads$CLASS == 'Principal Arterial'], add = TRUE)
+
+
+roads_cropped <- crop(roads, alameda)
+roads_masked <- mask(roads, alameda)
+
 
 
 ```
+
+
+Combining roads dataset 
+
+```{r}
+plot(summed)
+
+interstate <- roads_masked[roads_masked$CLASS == 'Interstate']
+freeway <- roads_masked[roads_masked$CLASS == 'Freeway or Expressway']
+arterial <- roads_masked[roads_masked$CLASS == 'Principal Arterial']
+
+major_roads <- rbind(interstate, freeway, arterial)
+plot(major_roads)
+
+roads_raster <- rasterize(major_roads, r)
+plot(roads_raster)
+
+```
+
+
+Sum with roads 
+
+```{r}
+
+summed_roads <- liquefaction_binned + density_binned + roads_raster + dens_range
+plet(summed_roads)
+
+
+```
+
+
 
