@@ -126,6 +126,7 @@ tracter <- rasterize(tracts, r, "density")
 liquefaction <- rast("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/liquefactionzones.tif")
 plot(liquefaction)
 
+
 reclass_liquefaction <- matrix(c(
   2, 0,
   1, 0.5,
@@ -191,6 +192,24 @@ plot(summed)
 
 
 ```
+Reclassifying Risk
+
+```{r}
+reclass_summed <- matrix(c(
+  0, 0.2, 5,
+  0.2, 0.4, 4,
+  0.4, 0.6, 3,
+  0.6, 0.8, 2,
+  0.8, 1, 1 
+), ncol = 3, byrow = TRUE)
+
+hazard_risk <- classify(summed, reclass_summed)
+plet(hazard_risk)
+```
+
+
+
+
 
 ```{r}
 roads <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Street_Centerlines_-6175090382167386015/Street_Centerlines.shp")
@@ -214,6 +233,9 @@ roads_masked <- mask(roads, alameda)
 ```
 
 
+
+
+
 Combining roads dataset 
 
 ```{r}
@@ -222,12 +244,15 @@ plot(summed)
 interstate <- roads_masked[roads_masked$CLASS == 'Interstate']
 freeway <- roads_masked[roads_masked$CLASS == 'Freeway or Expressway']
 arterial <- roads_masked[roads_masked$CLASS == 'Principal Arterial']
-
 major_roads <- rbind(interstate, freeway, arterial)
-plot(major_roads)
 
+r <- rast(extent = ext(dens_range), resolution = 100, crs = crs(dens_range)
+)
+
+plet(major_roads)
 roads_raster <- rasterize(major_roads, r)
-plot(roads_raster)
+
+plet(roads_raster)
 
 ```
 
@@ -235,7 +260,9 @@ plot(roads_raster)
 Sum with roads 
 
 ```{r}
-
+res(dens_range) <- res(roads_raster)
+res(density_binned) <- res(roads_raster)
+res(liquefaction_binned) <- res(roads_raster)
 summed_roads <- liquefaction_binned + density_binned + roads_raster + dens_range
 plet(summed_roads)
 
