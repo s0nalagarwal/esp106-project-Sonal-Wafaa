@@ -49,7 +49,10 @@ liquefaction <- mask(liquefaction, alameda)
 
 ```{r}
 r <- rast(alameda, nrow = 180, ncol = 360)
-liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
+
+liqdistance <- distance(r, liquefaction)
+
+#liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
 ```
 
 

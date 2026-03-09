@@ -204,9 +204,34 @@ reclass_summed <- matrix(c(
 ), ncol = 3, byrow = TRUE)
 
 hazard_risk <- classify(summed, reclass_summed)
-plet(hazard_risk)
+plet(hazard_risk, col = colorRampPalette(c("red", "orange", "yellow"))(100))
 ```
 
+Overlaying population density tracts with risk and finding the approx population 
+at high risk
+
+```{r}
+plot(hazard_risk)
+plot(dens_range, add = TRUE)
+
+tract_mean <- terra::extract(hazard_risk, tracts, fun = mean, na.rm = TRUE)
+
+tracts$risk <- tract_mean[,2]
+
+plot(tracts, "risk", col = colorRampPalette(c("red", "orange", "yellow"))(100))
+
+high_risk <- tracts[tracts$risk >= 2 & tracts$risk <= 3.2, ]
+plot(high_risk, add = TRUE, col = "purple")
+
+sum(high_risk$Population)
+
+
+```
+Sensitivity Analysis (?)
+
+```{r}
+
+```
 
 
 
