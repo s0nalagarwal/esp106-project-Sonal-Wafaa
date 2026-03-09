@@ -1,0 +1,211 @@
+---
+title: "Earthquake Risk"
+author: "Sonal Agarwal, Wafaa Lawai"
+date: "2026-03-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Downloading libraries
+```{r}
+library(terra)
+library(readr)
+```
+
+Downloading all our variables 
+
+```{r}
+#liquefaction zones
+liquefaction <- vect("Soil Liquefaction Hazard Zone_20260223/geo_export_dfa19071-7e4a-4377-a4e6-7b26faeb6a64.shp")
+
+#alameda county boundary
+alameda <- vect("County_Boundary_-2312687860649160244/County_Boundary.shp")
+
+#Fault lines
+faults <- vect("faults/shapefiles/FAM_Qt_Faults.shp")
+
+#population data for Alameda County 
+pop <- read.csv("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/alameda_pop.csv", header = FALSE)
+
+#Census tracts for Alameda County
+tracts <- vect("Census_Tract_Boundaries_-812809170864177660.geojson")
+```
+
+
+Getting variables into correct form
+
+1) County boundary 
+
+```{r}
+
+alameda <- project(alameda, "EPSG:6417")
+```
+
+2) Liquefaction
+
+Project, Crop, and Mask to Alameda County Boundary
+```{r}
+liquefaction <- project(liquefaction, alameda)
+liquefaction <- crop(liquefaction, alameda)
+liquefaction <- mask(liquefaction, alameda)
+
+#plotting for visualization
+plot(liquefaction, "liq")
+plot(alameda, add = TRUE)
+
+```
+Converting liquefaction vector into raster 
+
+```{r}
+r <- rast(alameda, nrow = 180, ncol = 360)
+
+liquefaction <- terra::rasterize(liquefaction, r, "liq", background = 2)
+
+
+```
+
+Filling in background with "safe" value
+```{r}
+cls <- data.frame(id=0:2, zone=c("H", "VH", "S"))
+
+levels(liquefaction) <- cls
+
+liquefaction <- crop(liquefaction, alameda)
+liquefaction <- mask(liquefaction, alameda)
+
+```
+Reclassify Raster into numeric values
+```{r}
+
+reclass_liquefaction <- matrix(c(
+  2, 0,
+  1, 0.5,
+  0, 1
+), ncol = 2, byrow = TRUE)
+
+liquefaction_binned <- classify(liquefaction, reclass_liquefaction)
+plot(liquefaction_binned)
+```
+
+3) Tracts
+
+Project tracts and find area of each tract for density calculation
+```{r}
+
+tracts <- project(tracts, liquefaction)
+
+#finding area 
+tract_area <- expanse(tracts, unit = "m")
+tracts$area <- tract_area
+```
+
+3) Faults 
+
+```{r}
+faults <- project(faults, 'epsg:6417')
+
+alameda_faults <- crop(faults, alameda)
+alameda_faults <- mask(faults, alameda)
+```
+
+Convert faults vector into a distance raster
+```{r}
+# createa  new raster to serve as distance raster
+r <- rast(alameda, nrow = 180, ncol = 360)
+
+dists <- distance(r, alameda_faults)
+
+plot(dists)
+plot(alameda_faults, add = TRUE, col = 'white')
+```
+
+Crop distance raster to county boundaries
+```{r}
+dists <- crop(dists, alameda)
+dists <- mask(dists, alameda)
+```
+
+Distance raster binning/ reclass
+```{r}
+distmax = 14002.541
+distmin  = 0.0047
+
+dists_range <- (distmax - dists) / (distmax - distmin)
+plot(dists_range)
+```
+
+4. Population density
+
+Tidy population data
+```{r}
+head(pop)
+
+pop <- t(pop)
+pop <- as.data.frame(pop)
+
+colnames(pop) <- c("Tract", "Population")
+pop <- pop[-1,]
+```
+
+Create a separate ID column in the population data (this is necessary for when we merge later)
+```{r}
+pop$ID <- pop$Tract
+
+for (i in 1:379) {
+  pop$ID[i] <- parse_number(pop$ID[i])
+  pop$Population[i] <- parse_number(pop$Population[i])
+}
+
+pop$Population <- as.numeric(pop$Population)
+```
+
+Cleaning area data
+```{r}
+for (i in 1:378) {
+  tracts$DIST_NAME[i] <- parse_number(tracts$DIST_NAME[i])
+}
+```
+
+Merge population data into spatvector with land area
+```{r}
+colnames(pop) <- c("Tract", "Population", "DIST_NAME")
+
+merged <- merge(tracts, pop, by = "DIST_NAME")
+
+```
+
+Calculate density
+
+```{r}
+merged$density <- merged$Population / merged$area
+
+# visualizing our data
+plot(merged, "density", breakby = 'cases')
+```
+
+Turn this into a raster
+
+```{r}
+tracter <- rasterize(merged, r, "density")
+```
+
+Reclassifying density raster (converting to 0-1 scale)
+```{r}
+reclass_density <- matrix(c(
+  0, 0.001789466, 0,
+  0.001789466, 0.003259117, 0.25,
+  0.003259117, 0.004418675, 0.5,
+  0.004418675, 0.00615361, 0.75,
+  0.00615361, Inf, 1
+), ncol = 3, byrow = TRUE)
+
+xjmax= 2.759048e-02 
+xjmin  = 8.820881e-07 
+
+dens_range <- (tracter - xjmin) / (xjmax - xjmin)
+plot(dens_range)
+```
+

@@ -158,18 +158,6 @@ plot(dens_range)
 #density_binned <- classify(tracter, reclass_density)
 #plot(density_binned)
 
-
-#summed <- liquefaction_binned + density_binned  
-#summed
-#plot(summed)
-```
-
-```{r}
-par(mfrow=c(2,2))
-plot(density_binned)
-plot(liquefaction_binned)
-plot(density_binned)
-plot(summed)
 ```
 
 
@@ -186,8 +174,8 @@ plot(dists_range)
 ```{r}
 summed <- (liquefaction_binned * 0.4) + (dens_range * 0.2) + (dists_range * 0.4)
 summed
-plot(summed)
-#plet(summed)
+plot(summed, main = "Earthquake Risk Suitability Map")
+plet(summed)
 
 
 
@@ -204,11 +192,14 @@ reclass_summed <- matrix(c(
 ), ncol = 3, byrow = TRUE)
 
 hazard_risk <- classify(summed, reclass_summed)
+plot(hazard_risk, col = colorRampPalette(c("red", "orange", "yellow"))(100))
 plet(hazard_risk, col = colorRampPalette(c("red", "orange", "yellow"))(100))
 ```
 
 Overlaying population density tracts with risk and finding the approx population 
 at high risk
+
+
 
 ```{r}
 plot(hazard_risk)
@@ -221,7 +212,7 @@ tracts$risk <- tract_mean[,2]
 plot(tracts, "risk", col = colorRampPalette(c("red", "orange", "yellow"))(100))
 
 high_risk <- tracts[tracts$risk >= 2 & tracts$risk <= 3.2, ]
-plot(high_risk, add = TRUE, col = "purple")
+plot(high_risk, add = TRUE, col = "purple", main = "High risk Tracts")
 
 sum(high_risk$Population)
 
@@ -229,70 +220,31 @@ sum(high_risk$Population)
 ```
 Sensitivity Analysis (?)
 
-```{r}
 
+```{r}
+sensitivity <- function(weight1, weight2, weight3){
+  summed <- liquefaction_binned * weight1 + dens_range * weight2 + dists_range * weight3
+  hazard_risk <-  classify(summed, reclass_summed)
+  tract_mean <- terra::extract(hazard_risk, tracts, fun = mean, na.rm = TRUE)
+  tracts$risk <- tract_mean[,2]
+  plot(tracts, "risk", col = colorRampPalette(c("red", "orange", "yellow"))(100),
+       main = "Tracts at High Risk",
+       sub = paste0("Weights: Liquefaction = ", weight1, "; Density = ", weight2, 
+                   "; Fault Distance = ", weight3))
+  high_risk <- tracts[tracts$risk < 3, ]
+  plot(high_risk, add = TRUE, col = "purple")
+  return(sum(high_risk$Population))
+}
 ```
 
 
-
-
 ```{r}
-roads <- vect("/Users/sonal/Documents/GitHub/esp106-project-Sonal-Wafaa/Street_Centerlines_-6175090382167386015/Street_Centerlines.shp")
+sensitivity(0.33, 0.33, 0.33) # equal weights
+sensitivity(0.5, 0.25, 0.25) #more weight on liquefaction
 
-roads <- project(roads, crs(summed))
+sensitivity(0.5, 0, 0.5) #density = 0
+sensitivity(0, 0.5, 0.5) #liq = 0
+sensitivity(0.5, 0.5, 0) #dist = 0
 ```
-
-```{r}
-
-#plot(roads[roads$CLASS == 'Interstate'], add = TRUE)
-#plot(roads[roads$CLASS == 'Freeway or Expressway'], add = TRUE)
-#plot(roads[roads$CLASS == 'Minor Arterial'], add = TRUE)
-#plot(roads[roads$CLASS == 'Principal Arterial'], add = TRUE)
-
-
-roads_cropped <- crop(roads, alameda)
-roads_masked <- mask(roads, alameda)
-
-
-
-```
-
-
-
-
-
-Combining roads dataset 
-
-```{r}
-plot(summed)
-
-interstate <- roads_masked[roads_masked$CLASS == 'Interstate']
-freeway <- roads_masked[roads_masked$CLASS == 'Freeway or Expressway']
-arterial <- roads_masked[roads_masked$CLASS == 'Principal Arterial']
-major_roads <- rbind(interstate, freeway, arterial)
-
-r <- rast(extent = ext(dens_range), resolution = 100, crs = crs(dens_range)
-)
-
-plet(major_roads)
-roads_raster <- rasterize(major_roads, r)
-
-plet(roads_raster)
-
-```
-
-
-Sum with roads 
-
-```{r}
-res(dens_range) <- res(roads_raster)
-res(density_binned) <- res(roads_raster)
-res(liquefaction_binned) <- res(roads_raster)
-summed_roads <- liquefaction_binned + density_binned + roads_raster + dens_range
-plet(summed_roads)
-
-
-```
-
 
 

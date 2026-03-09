@@ -37,15 +37,10 @@ alameda <- project(alameda, liquefaction)
 ```{r}
 liquefaction <- crop(liquefaction, alameda)
 liquefaction <- mask(liquefaction, alameda)
-#plot(liquefaction, "liq")
-#plot(alameda, add = TRUE)
+plot(liquefaction, "liq")
+plot(alameda, add = TRUE)
 
 ```
-
-
-```{r}
-```
-
 
 ```{r}
 r <- rast(alameda, nrow = 180, ncol = 360)
@@ -90,8 +85,3 @@ tracts$area <- tract_area
 #writeVector(tracts, filename = "AlamedaTracts.geojson")
 
 ```
-```{r}
-
-
-```
-
