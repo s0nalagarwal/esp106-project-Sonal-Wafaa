@@ -200,7 +200,6 @@ Overlaying population density tracts with risk and finding the approx population
 at high risk
 
 
-
 ```{r}
 plot(hazard_risk)
 plot(dens_range, add = TRUE)
